@@ -2,7 +2,7 @@
   "openapi" : "3.0.2",
   "info" : {
     "title" : "RHEL IdM REST API for Keycloak",
-    "description" : "The purpose of this documentation is to outline the method calls required by Keycloak in order to perform user federation using RHEL IdM through REST-oriented APIs. The details about how the current integration works today is described in the [Keycloak documentation](https://www.keycloak.org/docs/latest/server_admin/index.html#_sssd).\n\nFor the endpoints described here it is assumed that endpoints are only accessible in the local network and any HTTP request happens over TLS.",
+    "description" : "The purpose of this documentation is to outline the method calls required by Keycloak in order to perform user federation using RHEL IdM through REST-oriented APIs. The details about how the current integration works today is described in the [Keycloak documentation](https://www.keycloak.org/docs/latest/server_admin/index.html#_sssd).\n\nFor the endpoints described here it is assumed that endpoints are only accessible in the local network and any HTTP request happens over TLS.\n\n**All calls needs to be authenticated with mutual TLS**",
     "contact" : {
       "name" : "Bruno Oliveira",
       "email" : "abstractj@redhat.com"
@@ -17,6 +17,37 @@
     "/auth" : {
       "summary" : "Authentication endpoint",
       "description" : "",
+      "put" : {
+        "summary" : "Update user's password",
+        "description" : "Assuming user is already logged in",
+        "requestBody" : {
+          "description" : "Assuming user is already logged in",
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "string"
+              },
+              "examples" : {
+                "Update user password" : {
+                  "value" : "{\n    \"password\": \"newpassword\"\n}"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Successful update"
+          },
+          "401" : {
+            "description" : "Assuming Mutual TLS. Return an error if the server provides an invalid certificate."
+          },
+          "403" : {
+            "description" : "Assuming Mutual TLS. Return an error if server has no permission to make the request."
+          }
+        }
+      },
       "post" : {
         "summary" : "Credential validation",
         "description" : "Validate user credentials against RHEL IdM. For this operations there are 2 types \nof scenarios that we want to cover here:\n\n1. Username and Password authentication\n2. Username, Password and 2FA\n\nToday such authentication happens using a PAM service named *keycloak*.",
@@ -32,7 +63,7 @@
                   "value" : "{\n    \"username\": \"lucy\", \n    \"password\": \"Passw0rd#\"\n}"
                 },
                 "Username + Password + OTP authentication" : {
-                  "value" : "{ \n    \"username\": \"lucy\", \n    \"password\": \"Passw0rd# + your OTP\" \n}"
+                  "value" : "{ \n    \"username\": \"lucy\", \n    \"password\": \"Passw0rd#\", \n    \"otp\": \"your OTP\" \n}"
                 }
               }
             }
@@ -86,7 +117,7 @@
         "description" : "Health endpoint to check if RHEL IdM server is available",
         "responses" : {
           "200" : {
-            "description" : "Health check endpoint to verify if IdM server is available\n\nAPI Health response based on the draft: https://tools.ietf.org/id/draft-inadarei-api-health-check-01.html#rfc.section.3",
+            "description" : "Health check endpoint to verify if IdM server is available",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -118,42 +149,6 @@
         }
       }
     },
-    "/users/{username}/groups" : {
-      "get" : {
-        "summary" : "Get user groups based on SSSD setup",
-        "description" : "Fetches all the user groups its subject username. Authentication is required.\n\n**DBUs call**: org.freedesktop.sssd.infopipe.GetUserGroups()",
-        "parameters" : [ {
-          "name" : "username",
-          "in" : "path",
-          "description" : "Valid username on RHEL IdM",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : { },
-        "responses" : {
-          "200" : {
-            "description" : "The response should contain all the groups associated with the logged in user. Authentication is required.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Group"
-                },
-                "examples" : {
-                  "User 's group" : {
-                    "value" : "{\n    \"Group\": [\n        \"group1\",\n        \"group2\",\n        \"group3\"\n    ]\n}"
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Unless the current logged in user is the admin. Regular users should only be allowed to query their own groups.\n\n**Example**: John should is allowed to retrieve details about his own groups. But should get HTTP 403 while trying to query groups related to Maria."
-          }
-        }
-      }
-    },
     "/users/{username}" : {
       "get" : {
         "summary" : "Get user attributes based on SSSD setup",
@@ -177,20 +172,69 @@
                 },
                 "examples" : {
                   "User's attributes" : {
-                    "value" : "{ \n    \"mail\": \"lucy@smith.com\", \n    \"givenname\": \"Lucy\", \n    \"sn\": \"Smith\" \n}\n"
+                    "value" : "{ \n    \"mail\": \"lucy@smith.com\", \n    \"givenname\": \"Lucy\", \n    \"sn\": \"Smith\",\n    \"Groups\": [\n        \"group1\",\n        \"group2\",\n        \"group3\"\n    ]\n}\n"
                   }
                 }
               }
             }
           },
+          "401" : {
+            "description" : "Assuming Mutual TLS. Return an error if the server provides an invalid certificate."
+          },
           "403" : {
-            "description" : "Unless the current logged in user is the admin. Regular users should only be allowed to query their own attributes.\n\n**Example**: John should is allowed to retrieve details about his own profile. But should get HTTP 403 while trying to query details about Maria."
+            "description" : "Assuming Mutual TLS. Return an error if server has no permission to make the request."
+          }
+        }
+      },
+      "put" : {
+        "summary" : "Update user's attributes",
+        "description" : "Assuming user is already logged in",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/User"
+              },
+              "examples" : {
+                "Update user" : {
+                  "value" : "{ \n    \"mail\": \"lucy@newprovider.com\", \n    \"givenname\": \"Lucy\", \n    \"sn\": \"Smith\",\n    \"Groups\": [\n        \"group4\",\n        \"group5\",\n        \"group6\"\n    ]\n}\n"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Successful update"
+          },
+          "400" : {
+            "description" : "Invalid request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Error"
+                },
+                "examples" : {
+                  "Invalid request Error" : {
+                    "value" : "{ \n    \"error\": \"Malformed request\" \n}"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Assuming Mutual TLS. Return an error if the server provides an invalid certificate."
+          },
+          "403" : {
+            "description" : "Assuming Mutual TLS. Return an error if server has no permission to make the request."
           }
         }
       },
       "parameters" : [ {
         "name" : "username",
         "in" : "path",
+        "description" : "Valid username on RHEL IdM",
         "required" : true,
         "schema" : {
           "type" : "string"
@@ -199,7 +243,7 @@
     },
     "/users/{username}/auth/config" : {
       "get" : {
-        "summary" : "Retrieve the authentication mechanisms enabled for an specific user.",
+        "summary" : "Retrieve the authentication mechanisms enabled for an specific user",
         "parameters" : [ {
           "name" : "username",
           "in" : "path",
@@ -222,17 +266,26 @@
                 },
                 "examples" : {
                   "Authentication Methods" : {
-                    "value" : "[\n    \"password\",\n    \"password + otp\",\n    \"cert\"\n]"
+                    "value" : "[\n    \"password\",\n    \"password + otp\",\n    \"cert\",\n    \"kerberos\"\n]"
                   }
                 }
               }
             }
           },
+          "401" : {
+            "description" : "Assuming Mutual TLS. Return an error if the server provides an invalid certificate."
+          },
           "403" : {
-            "description" : "Unless the current logged in user is the admin. Regular users should only be allowed to query their own config.\n\n**Example**: John should is allowed to retrieve authentication methods for his own profile. But should get HTTP 403 while trying to query authentication methods for Maria."
+            "description" : "Assuming Mutual TLS. Return an error if server has no permission to make the request."
           }
         }
-      }
+      },
+      "parameters" : [ {
+        "name" : "username",
+        "in" : "path",
+        "description" : "Valid username on RHEL IdM",
+        "required" : true
+      } ]
     }
   },
   "components" : {
@@ -256,7 +309,7 @@
         "type" : "object"
       },
       "User" : {
-        "required" : [ "email", "givvenname", "sn" ],
+        "required" : [ "email" ],
         "type" : "object",
         "properties" : {
           "email" : {
@@ -267,15 +320,8 @@
           },
           "sn" : {
             "type" : "string"
-          }
-        }
-      },
-      "Group" : {
-        "required" : [ "Group" ],
-        "type" : "object",
-        "properties" : {
-          "Group" : {
-            "description" : "User groups",
+          },
+          "Groups" : {
             "type" : "array",
             "items" : {
               "type" : "string"
