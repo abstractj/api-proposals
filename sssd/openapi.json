@@ -30,6 +30,12 @@
               "examples" : {
                 "Update user password" : {
                   "value" : "{\n    \"password\": \"newpassword\"\n}"
+                },
+                "Certificate" : {
+                  "value" : "{ \"cert\": \"<PEM>\" }"
+                },
+                "Kerberos" : {
+                  "value" : "{ \"kerberos\": \"<Kerberos ticket>\" }"
                 }
               }
             }
@@ -259,14 +265,11 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "string"
-                  }
+                  "$ref" : "#/components/schemas/Config"
                 },
                 "examples" : {
                   "Authentication Methods" : {
-                    "value" : "[\n    \"password\",\n    \"password + otp\",\n    \"cert\",\n    \"kerberos\"\n]"
+                    "value" : "{\n    \"config\": [\n        \"password\",\n        \"password + otp\",\n        \"cert\",\n        \"kerberos\"\n    ]\n}"
                   }
                 }
               }
@@ -322,6 +325,18 @@
             "type" : "string"
           },
           "Groups" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "Config" : {
+        "required" : [ "method" ],
+        "type" : "object",
+        "properties" : {
+          "method" : {
             "type" : "array",
             "items" : {
               "type" : "string"
