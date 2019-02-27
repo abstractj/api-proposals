@@ -30,12 +30,6 @@
               "examples" : {
                 "Update user password" : {
                   "value" : "{\n    \"password\": \"newpassword\"\n}"
-                },
-                "Certificate" : {
-                  "value" : "{ \"cert\": \"<PEM>\" }"
-                },
-                "Kerberos" : {
-                  "value" : "{ \"kerberos\": \"<Kerberos ticket>\" }"
                 }
               }
             }
@@ -56,7 +50,7 @@
       },
       "post" : {
         "summary" : "Credential validation",
-        "description" : "Validate user credentials against RHEL IdM. For this operations there are 2 types \nof scenarios that we want to cover here:\n\n1. Username and Password authentication\n2. Username, Password and 2FA\n\nToday such authentication happens using a PAM service named *keycloak*.",
+        "description" : "Validate user credentials against RHEL IdM. For this operations there are 2 types \nof scenarios that we want to cover here:\n\n1. Username and Password authentication\n2. Username, Password and 2FA\n3. Certificate authentication\n4. Kerberos ticket validation\n\nToday such authentication happens using a PAM service named *keycloak*.",
         "requestBody" : {
           "description" : "Authentication parameters",
           "content" : {
@@ -70,6 +64,12 @@
                 },
                 "Username + Password + OTP authentication" : {
                   "value" : "{ \n    \"username\": \"lucy\", \n    \"password\": \"Passw0rd#\", \n    \"otp\": \"your OTP\" \n}"
+                },
+                "Certificate" : {
+                  "value" : "{ \"cert\": \"<PEM>\" }"
+                },
+                "Kerberos" : {
+                  "value" : "{ \"kerberos\": \"<Kerberos ticket>\" }"
                 }
               }
             }
@@ -294,13 +294,13 @@
   "components" : {
     "schemas" : {
       "Credentials" : {
-        "required" : [ "username", "password" ],
+        "required" : [ "username", "credential" ],
         "type" : "object",
         "properties" : {
           "username" : {
             "type" : "string"
           },
-          "password" : {
+          "credential" : {
             "type" : "string"
           }
         }
